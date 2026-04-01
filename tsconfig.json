@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["ES2017", "DOM"],
+    "lib": ["ES2017"],
     "strict": true,
     "outDir": "dist",
-    "typeRoots": ["./node_modules/@types", "./node_modules/@figma/plugin-typings"]
+    "typeRoots": ["./node_modules/@types", "./node_modules/@figma"]
   },
   "include": ["src/code.ts"]
 }
