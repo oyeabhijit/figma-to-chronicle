@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Copy to Chronicle</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 12px;
+    color: #1a1a1a;
+    background: #fff;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* Chronicle branding accent */
+  :root { --chronicle: #5B4BF5; --chronicle-hover: #4A3AD4; }
+
+  /* ── Selection info ─────────────────────────────── */
+  .selection-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #f4f4f5;
+    border-radius: 8px;
+    min-height: 44px;
+  }
+  .selection-icon {
+    width: 28px; height: 28px;
+    background: #e4e4e7;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+  .selection-icon.active { background: #ede9fe; }
+  .selection-text { flex: 1; overflow: hidden; }
+  .selection-name {
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #1a1a1a;
+  }
+  .selection-type {
+    font-size: 10px;
+    color: #71717a;
+    margin-top: 1px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .no-selection { color: #71717a; font-size: 12px; }
+
+  /* ── Format selector ────────────────────────────── */
+  label.section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #52525b;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .format-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .format-btn {
+    padding: 8px 0;
+    border: 1.5px solid #e4e4e7;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    color: #52525b;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s, color 0.12s;
+    text-align: center;
+  }
+  .format-btn:hover { border-color: #a78bfa; color: #1a1a1a; }
+  .format-btn.selected {
+    border-color: var(--chronicle);
+    background: #f5f3ff;
+    color: var(--chronicle);
+  }
+
+  /* ── Scale selector (PNG only) ──────────────────── */
+  .scale-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .scale-btn {
+    padding: 6px 0;
+    border: 1.5px solid #e4e4e7;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    color: #52525b;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s, color 0.12s;
+    text-align: center;
+  }
+  .scale-btn:hover { border-color: #a78bfa; color: #1a1a1a; }
+  .scale-btn.selected {
+    border-color: var(--chronicle);
+    background: #f5f3ff;
+    color: var(--chronicle);
+  }
+
+  .hidden { display: none !important; }
+
+  /* ── Copy button ────────────────────────────────── */
+  .copy-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--chronicle);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s, opacity 0.12s;
+  }
+  .copy-btn:hover:not(:disabled) { background: var(--chronicle-hover); }
+  .copy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Status ─────────────────────────────────────── */
+  .status {
+    text-align: center;
+    font-size: 11px;
+    min-height: 16px;
+    transition: color 0.15s;
+  }
+  .status.success { color: #16a34a; }
+  .status.error   { color: #dc2626; }
+
+  /* ── Footer ─────────────────────────────────────── */
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 10px;
+    color: #a1a1aa;
+    margin-top: 2px;
+  }
+  .footer-logo {
+    font-weight: 700;
+    color: var(--chronicle);
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Selection info -->
+<div class="selection-info" id="selectionInfo">
+  <div class="selection-icon" id="selectionIcon">📋</div>
+  <div class="selection-text">
+    <div class="no-selection" id="noSelectionText">Select an element in Figma</div>
+    <div id="selectionDetails" class="hidden">
+      <div class="selection-name" id="selectionName"></div>
+      <div class="selection-type" id="selectionType"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Format -->
+<div>
+  <label class="section-label">Format</label>
+  <div class="format-group">
+    <button class="format-btn selected" id="btnSVG" onclick="selectFormat('SVG')">SVG</button>
+    <button class="format-btn" id="btnPNG" onclick="selectFormat('PNG')">PNG</button>
+  </div>
+</div>
+
+<!-- Scale (PNG only) -->
+<div id="scaleSection" class="hidden">
+  <label class="section-label">Scale</label>
+  <div class="scale-group">
+    <button class="scale-btn" id="scale1" onclick="selectScale(1)">1×</button>
+    <button class="scale-btn selected" id="scale2" onclick="selectScale(2)">2×</button>
+    <button class="scale-btn" id="scale3" onclick="selectScale(3)">3×</button>
+  </div>
+</div>
+
+<!-- Copy button -->
+<button class="copy-btn" id="copyBtn" onclick="requestExport()" disabled>
+  Copy to Clipboard
+</button>
+
+<!-- Status -->
+<div class="status" id="status"></div>
+
+<!-- Footer -->
+<div class="footer">
+  <span>Copy to</span>
+  <span class="footer-logo">Chronicle</span>
+</div>
+
+<script>
+  // ── State ────────────────────────────────────────────────────────────────
+  let selectedFormat = 'SVG';
+  let selectedScale  = 2;
+  let hasSelection   = false;
+
+  // Node type → emoji icon
+  const NODE_ICONS = {
+    RECTANGLE: '▭', ELLIPSE: '○', POLYGON: '⬡', STAR: '★',
+    LINE: '─', VECTOR: '✦', FRAME: '⬜', COMPONENT: '◈',
+    COMPONENT_SET: '◈', INSTANCE: '◇', GROUP: '⬚',
+    TEXT: 'T', IMAGE: '🖼', BOOLEAN_OPERATION: '⊕',
+  };
+
+  // ── UI helpers ───────────────────────────────────────────────────────────
+  function selectFormat(fmt) {
+    selectedFormat = fmt;
+    document.getElementById('btnSVG').classList.toggle('selected', fmt === 'SVG');
+    document.getElementById('btnPNG').classList.toggle('selected', fmt === 'PNG');
+    document.getElementById('scaleSection').classList.toggle('hidden', fmt !== 'PNG');
+  }
+
+  function selectScale(s) {
+    selectedScale = s;
+    [1, 2, 3].forEach(n => {
+      document.getElementById('scale' + n).classList.toggle('selected', n === s);
+    });
+  }
+
+  function setStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status ' + (type || '');
+    if (type === 'success') setTimeout(() => { el.textContent = ''; el.className = 'status'; }, 3000);
+  }
+
+  function updateSelectionUI(hasNode, name, nodeType) {
+    hasSelection = hasNode;
+    document.getElementById('noSelectionText').classList.toggle('hidden', hasNode);
+    document.getElementById('selectionDetails').classList.toggle('hidden', !hasNode);
+    document.getElementById('copyBtn').disabled = !hasNode;
+
+    if (hasNode) {
+      document.getElementById('selectionName').textContent = name;
+      document.getElementById('selectionType').textContent = nodeType.replace(/_/g, ' ');
+      const icon = document.getElementById('selectionIcon');
+      icon.textContent = NODE_ICONS[nodeType] || '◻';
+      icon.classList.add('active');
+    } else {
+      document.getElementById('selectionIcon').textContent = '📋';
+      document.getElementById('selectionIcon').classList.remove('active');
+    }
+  }
+
+  // ── Export request ───────────────────────────────────────────────────────
+  function requestExport() {
+    if (!hasSelection) return;
+    document.getElementById('copyBtn').disabled = true;
+    document.getElementById('copyBtn').textContent = 'Exporting…';
+    setStatus('');
+    parent.postMessage({
+      pluginMessage: { type: 'EXPORT', format: selectedFormat, scale: selectedScale }
+    }, '*');
+  }
+
+  // ── Transport layer: sendToChronicle ─────────────────────────────────────
+  // Phase 1: clipboard — both formats produce a PNG data URL, then we use
+  //          execCommand('copy') with text/html so Chronicle gets a real image.
+  // Phase 2: swap writeToClipboard() to POST to Chronicle API instead.
+  async function sendToChronicle(data, format) {
+    const dataUrl = format === 'SVG'
+      ? await svgToDataUrl(data)
+      : 'data:image/png;base64,' + data;
+    await writeToClipboard(dataUrl);
+  }
+
+  // Render SVG string → canvas → PNG data URL (2× for sharpness)
+  function svgToDataUrl(svgString) {
+    const { width, height } = getSVGDimensions(svgString);
+    const scale = 2;
+    const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+    return renderToDataUrl(src, width * scale, height * scale);
+  }
+
+  // Draw src image onto a canvas at (w × h) and return a PNG data URL
+  function renderToDataUrl(src, w, h) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width  = w || img.naturalWidth  || 400;
+        canvas.height = h || img.naturalHeight || 400;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas 2D not available')); return; }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = src;
+    });
+  }
+
+  // Read SVG width/height from attributes or viewBox
+  function getSVGDimensions(svgString) {
+    try {
+      const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
+      const svg = doc.documentElement;
+      const w = parseFloat(svg.getAttribute('width'))  || 0;
+      const h = parseFloat(svg.getAttribute('height')) || 0;
+      if (w && h) return { width: w, height: h };
+      const vb = svg.getAttribute('viewBox');
+      if (vb) {
+        const p = vb.trim().split(/[\s,]+/);
+        return { width: parseFloat(p[2]) || 400, height: parseFloat(p[3]) || 400 };
+      }
+    } catch (_) {}
+    return { width: 400, height: 400 };
+  }
+
+  // Write a PNG data URL to the clipboard as a real image/png.
+  //
+  // Method 1: ClipboardItem API — correct modern approach, works if permission is granted.
+  // Method 2: contenteditable + select + execCommand — the browser natively encodes the
+  //           selected <img> as image/png bytes on the clipboard (not text/html with a
+  //           data URL). This is what makes it paste as an actual image in Figma/Chronicle.
+  async function writeToClipboard(dataUrl) {
+    // Method 1 — ClipboardItem (may be blocked in Figma's sandboxed iframe)
+    try {
+      const b64 = dataUrl.split(',')[1];
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'image/png' });
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      return;
+    } catch (_) {}
+
+    // Method 2 — load image into a contenteditable, select it, execCommand copy.
+    // The browser puts actual image/png on the clipboard, not HTML text.
+    await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const host = document.createElement('div');
+        host.setAttribute('contenteditable', 'true');
+        host.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none;';
+        host.appendChild(img);
+        document.body.appendChild(host);
+
+        try {
+          const range = document.createRange();
+          range.selectNodeContents(host);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          document.execCommand('copy');
+          sel.removeAllRanges();
+          resolve();
+        } catch (e) {
+          reject(e);
+        } finally {
+          document.body.removeChild(host);
+        }
+      };
+      img.onerror = () => reject(new Error('Image failed to load for clipboard copy'));
+      img.src = dataUrl;
+    });
+  }
+
+  // ── Message handler ──────────────────────────────────────────────────────
+  window.onmessage = async (event) => {
+    const msg = event.data.pluginMessage;
+    if (!msg) return;
+
+    if (msg.type === 'SELECTION') {
+      updateSelectionUI(msg.hasSelection, msg.name, msg.nodeType);
+      setStatus('');
+    }
+
+    if (msg.type === 'EXPORT_RESULT') {
+      try {
+        await sendToChronicle(msg.data, msg.format);
+        setStatus(`${msg.format} copied to clipboard!`, 'success');
+      } catch (e) {
+        setStatus('Copy failed: ' + (e.message || e), 'error');
+      } finally {
+        document.getElementById('copyBtn').disabled = false;
+        document.getElementById('copyBtn').textContent = 'Copy to Clipboard';
+      }
+    }
+
+    if (msg.type === 'ERROR') {
+      setStatus(msg.message, 'error');
+      document.getElementById('copyBtn').disabled = !hasSelection;
+      document.getElementById('copyBtn').textContent = 'Copy to Clipboard';
+    }
+  };
+</script>
+</body>
+</html>
